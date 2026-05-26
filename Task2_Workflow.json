@@ -1,0 +1,103 @@
+{
+  "name": "Bonus_UptimeMonitor_Production",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "value": 5
+            }
+          ]
+        }
+      },
+      "id": "bonus-schedule-trigger",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [150, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://demo.realworld.io",
+        "options": {
+          "failOnHttpStatusError": false,
+          "returnAllStatusCodes": true
+        }
+      },
+      "id": "bonus-http-ping",
+      "name": "Ping Web App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.statusCode }}",
+              "operation": "notEqual",
+              "value2": 200
+            }
+          ]
+        }
+      },
+      "id": "bonus-if-down",
+      "name": "Status Not 200?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://httpbin.org/post",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"alert\": \"CRITICAL_DOWNTIME_ALERT\",\n  \"target_url\": \"https://demo.realworld.io\",\n  \"observed_status\": \"{{ $json.statusCode }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "bonus-dispatch-alert",
+      "name": "Send Downtime Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 200]
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Ping Web App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping Web App": {
+      "main": [
+        [
+          {
+            "node": "Status Not 200?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Not 200?": {
+      "main": [
+        [
+          {
+            "node": "Send Downtime Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
